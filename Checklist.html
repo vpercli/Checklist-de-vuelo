@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist Interactivo</title>
+    <style>
+        @font-face {
+            font-family: 'Brolink Demo';
+            src: url('fonts/BrolinkDemo.woff2') format('woff2'),
+                 url('fonts/BrolinkDemo.otf') format('otf'),
+                 url('fonts/BrolinkDemo.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'Brolink Demo', sans-serif;
+			background-color: #00CCFF; /* Agrega el color de fondo */
+			position: relative; /* Necesario para posicionar la imagen */
+        }
+
+		#logo {
+            position: absolute; /* Posiciona la imagen respecto al body */
+            top: 10px; /* Ajusta la distancia desde la parte superior */
+            right: 20px; /* Ajusta la distancia desde la derecha */
+            width: 150px; /* Ajusta el ancho de la imagen */
+            height: auto; /* Mantiene la proporción de la imagen */
+        }
+        .item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .item input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .item.done {
+            text-decoration: line-through;
+            color: gray;
+        }
+
+        #resetButton {
+            display: block;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <img id="logo" src="images/AION.png" alt="Logo"> <h1>Checklist AION</h1>
+    <div id="checklist">
+        <div class="item">
+            <input type="checkbox" id="tarea1">
+            <label for="tarea1">Montar Centro, Antenas, Starlink etc.</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea2">
+            <label for="tarea2">Asegurar LORA y RTK</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea3">
+            <label for="tarea3">Encender equipos y conectar LAN Server, laptop y AP´s</label>
+        </div>
+         <div class="item">
+            <input type="checkbox" id="tarea4">
+            <label for="tarea4">Preparar Safety Device</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea5">
+            <label for="tarea5">Abrir configuración UNIFY 192.168.2.1</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea6">
+            <label for="tarea6">Checar canales wifi, enviroment y calidad de conexion AP´s (GBe)</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea7">
+            <label for="tarea7">Abrir página del server 192.168.2.117:8080</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea8">
+            <label for="tarea8">Iniciar RTK</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea9">
+            <label for="tarea9">Encender drones WAKE UP</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea10">
+            <label for="tarea10">Conectar USB coreos</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea11">
+            <label for="tarea11">Plan Show, crear coreo</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea12">
+            <label for="tarea12">Posicionar coreo, orientarla y definir ALTURA base</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea13">
+            <label for="tarea13">Ajustar Hard Fence</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea14">
+            <label for="tarea14">Comprobar RTK acc este fijadaa menos de un metro y poner ready los drones, checar baterias y calidad de recepcion WIFI y LORA</label>
+        </div>
+         <div class="item">
+            <input type="checkbox" id="tarea15">
+            <label for="tarea15">Checar altura de posibles obstaculos cercanos</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea16">
+            <label for="tarea16">Generar la misión ajustando la ALTURA de despegue para evitar los obstaculos y definir luz de drones durante despegue y aterrizaje</label>
+        </div>
+        <div class="item">
+            <input type="checkbox" id="tarea17">
+            <label for="tarea17">Esperar cálculo de trayectorias y carga de paths</label>
+        </div>
+         <div class="item">
+            <input type="checkbox" id="tarea18">
+            <label for="tarea18">Ajustar tiempo Pre Roll</label>
+        </div>
+         <div class="item">
+            <input type="checkbox" id="tarea19">
+            <label for="tarea19">LAUNCH COREO</label>
+        </div>
+    </div>
+    <button id="resetButton">Reiniciar Checklist</button>
+
+    <script>
+        const checklist = document.getElementById('checklist');
+        const resetButton = document.getElementById('resetButton');
+
+        checklist.addEventListener('change', function(event) {
+            if (event.target.type === 'checkbox') {
+                const label = event.target.parentElement;
+                label.classList.toggle('done', event.target.checked);
+            }
+        });
+
+        resetButton.addEventListener('click', function() {
+            const checkboxes = checklist.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.parentElement.classList.remove('done');
+            });
+        });
+    </script>
+</body>
+</html>
