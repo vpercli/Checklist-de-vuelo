@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de incidencias de vuelo · AION</title>
+<script>
+  // ====== Pega aquí la dirección del script de Google (paso 3 de las instrucciones) ======
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7g2tI38xxjaOoMpUsD3jOF5vPMGARymk4mYAbj9kzrluRDVs8WagKxae3xm1toHs6/exec';
+</script>
+<style>
+  :root { --azul:#1f3b5c; --azul2:#2f5f8f; --gris:#f2f4f7; --borde:#c9d1db; --rojo:#b3261e; --verde:#1e7b34; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", Roboto, Arial, Helvetica, sans-serif; font-size:17px;
+         color:#1b1f24; background:var(--gris); line-height:1.4; }
+  header { background:var(--azul); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  header img { height:40px; background:#fff; border-radius:6px; padding:3px; }
+  header h1 { font-size:20px; margin:0; font-weight:600; }
+  main { max-width:640px; margin:0 auto; padding:12px; }
+  .tarjeta { background:#fff; border:1px solid var(--borde); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .tarjeta h2 { font-size:17px; margin:0 0 10px; color:var(--azul); }
+  label { display:block; font-weight:600; margin:10px 0 4px; font-size:15px; }
+  input, select, textarea { width:100%; font:inherit; padding:10px; border:1px solid var(--borde); border-radius:8px; background:#fff; }
+  textarea { min-height:80px; resize:vertical; }
+  .fila { display:flex; gap:10px; } .fila > div { flex:1; }
+  .opciones { display:flex; gap:8px; flex-wrap:wrap; }
+  .opciones label { flex:1; min-width:80px; font-weight:500; margin:0; border:1px solid var(--borde); border-radius:8px;
+                    padding:10px; text-align:center; cursor:pointer; }
+  .opciones input { display:none; }
+  .opciones input:checked + span { font-weight:700; }
+  .opciones label:has(input:checked) { background:var(--azul2); color:#fff; border-color:var(--azul2); }
+  .equipo { border-left:4px solid var(--azul2); }
+  .equipo .cab { display:flex; justify-content:space-between; align-items:center; }
+  button { font:inherit; border:0; border-radius:8px; padding:12px 16px; cursor:pointer; }
+  .btn-prim { background:var(--azul); color:#fff; width:100%; font-size:18px; font-weight:600; }
+  .btn-sec { background:#fff; color:var(--azul); border:2px dashed var(--azul2); width:100%; }
+  .btn-quitar { background:none; color:var(--rojo); padding:4px 8px; font-size:15px; }
+  .aviso { padding:12px; border-radius:8px; margin-bottom:12px; display:none; }
+  .aviso.ok { background:#e3f3e7; color:var(--verde); display:block; }
+  .aviso.err { background:#fbe7e5; color:var(--rojo); display:block; }
+  .aviso.info { background:#e8eef6; color:var(--azul); display:block; }
+  .pequeno { font-size:14px; color:#555; }
+  img.prev { max-width:100%; max-height:160px; margin-top:6px; border-radius:6px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <img src="../images/AION.png" alt="AION" onerror="this.style.display='none'">
+  <h1>Reporte de incidencias de vuelo</h1>
+</header>
+<main>
+  <div id="aviso" class="aviso"></div>
+  <div id="pendientes" class="aviso info"></div>
+
+  <form id="f" autocomplete="off">
+    <div class="tarjeta" id="bloqueClave" style="display:none">
+      <h2>Clave del taller</h2>
+      <p class="pequeno">Solo la primera vez. Pídesela a Victor.</p>
+      <input id="clave" type="password">
+    </div>
+
+    <div class="tarjeta">
+      <h2>Datos del vuelo</h2>
+      <label for="reporta">Quién reporta</label>
+      <select id="reporta" required></select>
+      <div class="fila">
+        <div><label for="fecha">Fecha</label><input id="fecha" type="date" required></div>
+        <div><label for="lugar">Lugar</label><input id="lugar" placeholder="Ciudad / recinto"></div>
+      </div>
+      <label for="show">Show / evento</label>
+      <input id="show" placeholder="Ej. Show Cancún 04/11">
+      <label>Cuándo se detectó</label>
+      <select id="origen">
+        <option>Fallo en show</option>
+        <option>Fallo en ensayo</option>
+        <option>Detectada en revisión</option>
+        <option>Daño en transporte</option>
+        <option>Golpe / caída</option>
+        <option>Desgaste</option>
+        <option>Otro</option>
+      </select>
+    </div>
+
+    <div id="equipos"></div>
+    <button type="button" class="btn-sec" id="masEquipo">+ Añadir otro equipo afectado</button>
+
+    <div class="tarjeta" style="margin-top:12px">
+      <h2>Observaciones generales (opcional)</h2>
+      <textarea id="obs" placeholder="Viento, interferencias, algo que afecte a varios equipos..."></textarea>
+    </div>
+
+    <button type="submit" class="btn-prim" id="enviar">Enviar reporte</button>
+    <p class="pequeno">Cada equipo afectado genera su propia OT en el taller. Si no hay cobertura, el reporte se guarda en el móvil y se envía solo cuando vuelva la conexión.</p>
+  </form>
+</main>
+
+<datalist id="listaEquipos"></datalist>
+<datalist id="listaTipos"></datalist>
+
+<template id="tplEquipo">
+  <div class="tarjeta equipo">
+    <div class="cab"><h2>Equipo <span class="n"></span></h2><button type="button" class="btn-quitar">Quitar</button></div>
+    <div class="fila">
+      <div><label>ID del equipo</label><input class="e-id" list="listaEquipos" placeholder="Ej. D-0147" required></div>
+      <div><label>Tipo</label><input class="e-tipo" list="listaTipos" placeholder="Dron"></div>
+    </div>
+    <label>Qué ha pasado</label>
+    <textarea class="e-desc" required placeholder="Ej. No arma: error de compás. Se quedó en tierra."></textarea>
+    <label>Prioridad</label>
+    <div class="opciones">
+      <label><input type="radio" value="Alta"><span>Alta</span></label>
+      <label><input type="radio" value="Media" checked><span>Media</span></label>
+      <label><input type="radio" value="Baja"><span>Baja</span></label>
+    </div>
+    <label>¿Puede volver a volar?</label>
+    <div class="opciones">
+      <label><input type="radio" value="Sí"><span>Sí</span></label>
+      <label><input type="radio" value="No" checked><span>No</span></label>
+      <label><input type="radio" value="No sé"><span>No sé</span></label>
+    </div>
+    <label>Foto (opcional)</label>
+    <input class="e-foto" type="file" accept="image/*" capture="environment">
+    <img class="prev" alt="">
+  </div>
+</template>
+
+<script>
+const $ = s => document.querySelector(s);
+const LS = { clave:'rv_clave', listas:'rv_listas', cola:'rv_cola', yo:'rv_yo' };
+let nEq = 0;
+
+function aviso(txt, tipo) { const a = $('#aviso'); a.className = 'aviso ' + tipo; a.textContent = txt; a.scrollIntoView({behavior:'smooth'}); }
+
+function hoy() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function pintarListas(l) {
+  const sel = $('#reporta'), yo = localStorage.getItem(LS.yo) || '';
+  sel.innerHTML = '<option value="">— Elige tu nombre —</option>' +
+    (l.tecnicos || []).map(t => `<option ${t===yo?'selected':''}>${t}</option>`).join('');
+  $('#listaEquipos').innerHTML = (l.equipos || []).map(e => `<option value="${e}">`).join('');
+  $('#listaTipos').innerHTML = (l.tipos || []).map(e => `<option value="${e}">`).join('');
+}
+
+async function cargarListas() {
+  const guardadas = JSON.parse(localStorage.getItem(LS.listas) || 'null');
+  pintarListas(guardadas || { tecnicos:['Victor Perez','Jose Can','Tonatiuh Hernadez','Vladimir Montalvo','Manuel Medina','Fernando Guillen'], tipos:['Dron','Batería','Lote de drones'] });
+  const clave = localStorage.getItem(LS.clave);
+  if (!clave) return;
+  try {
+    const r = await fetch(SCRIPT_URL + '?clave=' + encodeURIComponent(clave));
+    const j = await r.json();
+    if (j.ok) { localStorage.setItem(LS.listas, JSON.stringify(j)); pintarListas(j); }
+    else if (j.error === 'Clave incorrecta') { localStorage.removeItem(LS.clave); $('#bloqueClave').style.display = ''; }
+  } catch (e) { /* sin conexión: usamos las listas guardadas */ }
+}
+
+function nuevoEquipo() {
+  nEq++;
+  const nodo = $('#tplEquipo').content.firstElementChild.cloneNode(true);
+  nodo.querySelectorAll('.opciones').forEach((g, i) => g.querySelectorAll('input').forEach(r => r.name = (i ? 'vuela' : 'prio') + nEq));
+  nodo.querySelector('.btn-quitar').onclick = () => { nodo.remove(); numerar(); };
+  const f = nodo.querySelector('.e-foto'), pv = nodo.querySelector('.prev');
+  f.onchange = async () => {
+    if (!f.files[0]) { pv.style.display='none'; nodo._foto = null; return; }
+    nodo._foto = await reducir(f.files[0]); pv.src = nodo._foto; pv.style.display = 'block';
+  };
+  $('#equipos').appendChild(nodo); numerar();
+}
+function numerar() {
+  const eqs = [...document.querySelectorAll('#equipos .equipo')];
+  eqs.forEach((e, i) => { e.querySelector('.n').textContent = i + 1; e.querySelector('.btn-quitar').style.display = eqs.length > 1 ? '' : 'none'; });
+}
+
+// Reduce la foto a 1280 px para que el envío sea ligero
+function reducir(file) {
+  return new Promise(res => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = url;
+  });
+}
+
+function leerFormulario() {
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    clave: localStorage.getItem(LS.clave) || $('#clave').value.trim(),
+    reporta: $('#reporta').value, fecha: $('#fecha').value, lugar: $('#lugar').value.trim(),
+    show: $('#show').value.trim(), origen: $('#origen').value, obs: $('#obs').value.trim(),
+    equipos: [...document.querySelectorAll('#equipos .equipo')].map(e => ({
+      id: e.querySelector('.e-id').value.trim().toUpperCase(),
+      tipo: e.querySelector('.e-tipo').value.trim(),
+      desc: e.querySelector('.e-desc').value.trim(),
+      prioridad: (e.querySelector('input[name^=prio]:checked') || {}).value || 'Media',
+      vuela: (e.querySelector('input[name^=vuela]:checked') || {}).value || '',
+      foto: e._foto || ''
+    }))
+  };
+}
+
+async function mandar(datos) {
+  const r = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(datos) }); // text/plain: sin bloqueo CORS
+  return r.json();
+}
+
+function cola() { return JSON.parse(localStorage.getItem(LS.cola) || '[]'); }
+function guardarCola(c) {
+  try { localStorage.setItem(LS.cola, JSON.stringify(c)); }
+  catch (e) { c.forEach(x => x.equipos.forEach(q => q.foto = '')); localStorage.setItem(LS.cola, JSON.stringify(c)); }
+  const p = $('#pendientes');
+  if (c.length) { p.className = 'aviso info'; p.textContent = `Hay ${c.length} reporte(s) guardados en este móvil sin enviar. Se enviarán solos al recuperar conexión.`; }
+  else p.className = 'aviso';
+}
+async function vaciarCola() {
+  let c = cola(); if (!c.length) return;
+  const quedan = [];
+  for (const d of c) { try { const j = await mandar(d); if (!j.ok) quedan.push(d); } catch (e) { quedan.push(d); } }
+  guardarCola(quedan);
+  if (quedan.length < c.length) aviso(`Se enviaron ${c.length - quedan.length} reporte(s) que estaban pendientes.`, 'ok');
+}
+
+$('#f').onsubmit = async ev => {
+  ev.preventDefault();
+  const d = leerFormulario();
+  if (!d.clave) { $('#bloqueClave').style.display = ''; aviso('Escribe la clave del taller.', 'err'); return; }
+  if (!d.reporta) { aviso('Elige quién reporta.', 'err'); return; }
+  localStorage.setItem(LS.yo, d.reporta);
+  const btn = $('#enviar'); btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const j = await mandar(d);
+    if (j.ok) {
+      localStorage.setItem(LS.clave, d.clave); $('#bloqueClave').style.display = 'none';
+      aviso(`Reporte ${j.numero} enviado (${d.equipos.length} equipo/s). Gracias.`, 'ok');
+      limpiar(); cargarListas();
+    } else {
+      if (j.error === 'Clave incorrecta') { localStorage.removeItem(LS.clave); $('#bloqueClave').style.display = ''; }
+      aviso('No se pudo enviar: ' + j.error, 'err');
+    }
+  } catch (e) {
+    const c = cola(); c.push(d); guardarCola(c);
+    aviso('Sin conexión. El reporte queda guardado en el móvil y se enviará solo.', 'info'); limpiar();
+  }
+  btn.disabled = false; btn.textContent = 'Enviar reporte';
+};
+
+function limpiar() {
+  $('#equipos').innerHTML = ''; nEq = 0; nuevoEquipo();
+  $('#obs').value = ''; $('#clave').value = '';
+}
+
+$('#masEquipo').onclick = nuevoEquipo;
+window.addEventListener('online', vaciarCola);
+$('#fecha').value = hoy();
+if (!localStorage.getItem(LS.clave)) $('#bloqueClave').style.display = '';
+nuevoEquipo(); guardarCola(cola()); cargarListas(); vaciarCola();
+setInterval(vaciarCola, 60000);
+</script>
+</body>
+</html>
