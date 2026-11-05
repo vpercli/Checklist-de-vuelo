@@ -40,6 +40,8 @@
   .aviso.err { background:#fbe7e5; color:var(--rojo); display:block; }
   .aviso.info { background:#e8eef6; color:var(--azul); display:block; }
   .pequeno { font-size:14px; color:#555; }
+  label.check { display:flex; gap:10px; align-items:center; font-weight:500; margin-top:12px; }
+  label.check input { width:22px; height:22px; flex:none; }
   img.prev { max-width:100%; max-height:160px; margin-top:6px; border-radius:6px; display:none; }
 </style>
 </head>
@@ -81,8 +83,18 @@
       </select>
     </div>
 
-    <div id="equipos"></div>
-    <button type="button" class="btn-sec" id="masEquipo">+ Añadir otro equipo afectado</button>
+    <div class="tarjeta">
+      <h2>Cierre del show</h2>
+      <label for="gcs">Reporte de la GCS (archivo)</label>
+      <input id="gcs" type="file">
+      <p class="pequeno" id="gcsInfo">Exporta el reporte de la estación de control al terminar y adjúntalo aquí (máx. 25 MB).</p>
+      <label class="check"><input type="checkbox" id="sinInc"> Show sin incidencias (solo subo el reporte de la GCS)</label>
+    </div>
+
+    <div id="bloqueEquipos">
+      <div id="equipos"></div>
+      <button type="button" class="btn-sec" id="masEquipo">+ Añadir otro equipo afectado</button>
+    </div>
 
     <div class="tarjeta" style="margin-top:12px">
       <h2>Observaciones generales (opcional)</h2>
@@ -134,7 +146,7 @@ function aviso(txt, tipo) { const a = $('#aviso'); a.className = 'aviso ' + tipo
 function hoy() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
 function pintarListas(l) {
-  const sel = $('#reporta'), yo = localStorage.getItem(LS.yo) || '';
+  const sel = $('#reporta'), yo = sel.value || localStorage.getItem(LS.yo) || '';
   sel.innerHTML = '<option value="">— Elige tu nombre —</option>' +
     (l.tecnicos || []).map(t => `<option ${t===yo?'selected':''}>${t}</option>`).join('');
   $('#listaEquipos').innerHTML = (l.equipos || []).map(e => `<option value="${e}">`).join('');
@@ -185,13 +197,33 @@ function reducir(file) {
   });
 }
 
+let gcsArchivo = null;
+const MAX_GCS = 25 * 1024 * 1024;
+function leerArchivo(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+$('#gcs').onchange = async () => {
+  const f = $('#gcs').files[0]; gcsArchivo = null;
+  if (!f) { $('#gcsInfo').textContent = ''; return; }
+  if (f.size > MAX_GCS) { $('#gcs').value = ''; aviso('El archivo de la GCS pesa más de 25 MB. Comprímelo en .zip o exporta solo el resumen.', 'err'); return; }
+  gcsArchivo = { nombre: f.name, tipo: f.type || 'application/octet-stream', datos: await leerArchivo(f) };
+  $('#gcsInfo').textContent = 'Adjunto: ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+};
+$('#sinInc').onchange = () => {
+  const sin = $('#sinInc').checked;
+  $('#bloqueEquipos').style.display = sin ? 'none' : '';
+  document.querySelectorAll('#equipos [required]').forEach(x => x.disabled = sin);
+};
+
 function leerFormulario() {
+  const sin = $('#sinInc').checked;
   return {
+    gcs: gcsArchivo ? gcsArchivo.datos : '', gcsNombre: gcsArchivo ? gcsArchivo.nombre : '', gcsTipo: gcsArchivo ? gcsArchivo.tipo : '',
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     clave: localStorage.getItem(LS.clave) || $('#clave').value.trim(),
     reporta: $('#reporta').value, fecha: $('#fecha').value, lugar: $('#lugar').value.trim(),
     show: $('#show').value.trim(), origen: $('#origen').value, obs: $('#obs').value.trim(),
-    equipos: [...document.querySelectorAll('#equipos .equipo')].map(e => ({
+    equipos: sin ? [] : [...document.querySelectorAll('#equipos .equipo')].map(e => ({
       id: e.querySelector('.e-id').value.trim().toUpperCase(),
       tipo: e.querySelector('.e-tipo').value.trim(),
       desc: e.querySelector('.e-desc').value.trim(),
@@ -210,7 +242,10 @@ async function mandar(datos) {
 function cola() { return JSON.parse(localStorage.getItem(LS.cola) || '[]'); }
 function guardarCola(c) {
   try { localStorage.setItem(LS.cola, JSON.stringify(c)); }
-  catch (e) { c.forEach(x => x.equipos.forEach(q => q.foto = '')); localStorage.setItem(LS.cola, JSON.stringify(c)); }
+  catch (e) {
+    c.forEach(x => { x.equipos.forEach(q => q.foto = ''); if (x.gcs) { x.gcs = ''; x.obs = (x.obs ? x.obs + ' · ' : '') + 'Reporte GCS no enviado (sin conexión, archivo grande): súbelo de nuevo'; } });
+    try { localStorage.setItem(LS.cola, JSON.stringify(c)); } catch (e2) {}
+  }
   const p = $('#pendientes');
   if (c.length) { p.className = 'aviso info'; p.textContent = `Hay ${c.length} reporte(s) guardados en este móvil sin enviar. Se enviarán solos al recuperar conexión.`; }
   else p.className = 'aviso';
@@ -228,13 +263,14 @@ $('#f').onsubmit = async ev => {
   const d = leerFormulario();
   if (!d.clave) { $('#bloqueClave').style.display = ''; aviso('Escribe la clave del taller.', 'err'); return; }
   if (!d.reporta) { aviso('Elige quién reporta.', 'err'); return; }
+  if (!d.equipos.length && !d.gcs) { aviso('Adjunta el reporte de la GCS o añade algún equipo con incidencia.', 'err'); return; }
   localStorage.setItem(LS.yo, d.reporta);
   const btn = $('#enviar'); btn.disabled = true; btn.textContent = 'Enviando...';
   try {
     const j = await mandar(d);
     if (j.ok) {
       localStorage.setItem(LS.clave, d.clave); $('#bloqueClave').style.display = 'none';
-      aviso(`Reporte ${j.numero} enviado (${d.equipos.length} equipo/s). Gracias.`, 'ok');
+      aviso(`Reporte ${j.numero} enviado (${d.equipos.length ? d.equipos.length + ' equipo/s' : 'sin incidencias'}${d.gcs ? ', con reporte GCS' : ''}). Gracias.`, 'ok');
       limpiar(); cargarListas();
     } else {
       if (j.error === 'Clave incorrecta') { localStorage.removeItem(LS.clave); $('#bloqueClave').style.display = ''; }
@@ -250,6 +286,8 @@ $('#f').onsubmit = async ev => {
 function limpiar() {
   $('#equipos').innerHTML = ''; nEq = 0; nuevoEquipo();
   $('#obs').value = ''; $('#clave').value = '';
+  $('#gcs').value = ''; gcsArchivo = null; $('#gcsInfo').textContent = '';
+  $('#sinInc').checked = false; $('#bloqueEquipos').style.display = '';
 }
 
 $('#masEquipo').onclick = nuevoEquipo;
