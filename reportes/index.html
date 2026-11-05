@@ -144,12 +144,12 @@ function pintarListas(l) {
 async function cargarListas() {
   const guardadas = JSON.parse(localStorage.getItem(LS.listas) || 'null');
   pintarListas(guardadas || { tecnicos:['Victor Perez','Jose Can','Tonatiuh Hernadez','Vladimir Montalvo','Manuel Medina','Fernando Guillen'], tipos:['Dron','Batería','Lote de drones'] });
-  const clave = localStorage.getItem(LS.clave);
+  const clave = localStorage.getItem(LS.clave) || $('#clave').value.trim();
   if (!clave) return;
   try {
     const r = await fetch(SCRIPT_URL + '?clave=' + encodeURIComponent(clave));
     const j = await r.json();
-    if (j.ok) { localStorage.setItem(LS.listas, JSON.stringify(j)); pintarListas(j); }
+    if (j.ok) { localStorage.setItem(LS.listas, JSON.stringify(j)); localStorage.setItem(LS.clave, clave); $('#bloqueClave').style.display = 'none'; pintarListas(j); }
     else if (j.error === 'Clave incorrecta') { localStorage.removeItem(LS.clave); $('#bloqueClave').style.display = ''; }
   } catch (e) { /* sin conexión: usamos las listas guardadas */ }
 }
@@ -253,6 +253,7 @@ function limpiar() {
 }
 
 $('#masEquipo').onclick = nuevoEquipo;
+$('#clave').addEventListener('change', cargarListas);
 window.addEventListener('online', vaciarCola);
 $('#fecha').value = hoy();
 if (!localStorage.getItem(LS.clave)) $('#bloqueClave').style.display = '';
